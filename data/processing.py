@@ -3,6 +3,7 @@ import numpy as np
 
 
 data = pd.read_csv("dataset.csv")
+data = data.iloc[:, 1:]
 
 # print(data.info())
 
@@ -10,26 +11,36 @@ data = pd.read_csv("dataset.csv")
 
 for col in data.columns:
     if data[col].isnull().any():
-        print(f"Coulumn {col} has missing values")
+        # print(f"Coulumn {col} has missing values")
         if pd.api.types.is_numeric_dtype(data[col]):
             data[col] = data[col].fillna(data[col].mean())
         else:
-            data = data.dropna()
+            data = data.dropna(subset=[col])
 
-        
-data = data[data["key"] != -1]
-
-#seconds calculator: 1 milisecond * 1000 = 1 second
+# seconds calculator: 1 milisecond * 1000 = 1 second #
 data["duration_s"] = data["duration_ms"]/1000
 data = data.drop(columns = ["duration_ms"])
 
 
 
-data = data.iloc[:, 2:]
+data = data.drop_duplicates(subset = ["track_id"], keep = "first")
 
-# print(data.info())
+def unique_list(series):
+    return sorted(series.dropna().astype(str).unique().tolist())
+
+agg_map = {}
+
+for col in data.columns:
+    if col == "track_id":
+        continue
+    if pd.api.types.is_numeric_dtype(data[col]):
+        agg_map[col] = "mean"
+    else:
+        agg_map[col] = unique_list
+
+processed = data.groupby("track_id", as_index=False).agg(agg_map)
+processed = processed[data.columns.tolist()]
+# print(processed.info())
 
         
-# data.to_csv("spotify_data.csv", index = 0)
-updated_data = pd.read_csv("spotify_data.csv")
-print(updated_data.info())
+processed.to_csv("spotify_data.csv", index = 0)
